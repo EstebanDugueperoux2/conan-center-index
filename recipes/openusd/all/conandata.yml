@@ -1,0 +1,16 @@
+sources:
+  "24.03":
+    url:
+    - "https://github.com/PixarAnimationStudios/OpenUSD/archive/refs/tags/v24.03.tar.gz"
+    sha256: "0724421cff8ae04d0a7108ffa7c104e6ec3f7295418d4d50caaae767e59795ef"
+patches:
+  # Newer versions at the top
+    "1.1.0":
+    - patch_file: "patches/0001-fix-cmake.patch"
+      patch_description: "correct the order of cmake min and project"
+      patch_type: "backport"
+      patch_source: "https://github.com/owner/package/pulls/42"
+    - patch_file: "patches/0002-fix-linux.patch"
+      patch_description: "add missing header to support linux"
+      patch_type: "portability"
+      patch_source: "https://github.com/owner/package/issues/0"
