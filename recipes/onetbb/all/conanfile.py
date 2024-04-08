@@ -6,6 +6,7 @@ from conan.tools.env import VirtualBuildEnv
 from conan.tools.files import apply_conandata_patches, export_conandata_patches, copy, get, load, rmdir, rm
 from conan.tools.gnu import PkgConfigDeps
 from conan.tools.scm import Version
+from conan.tools.files import chdir, copy, get, replace_in_file, save
 import os
 import re
 
@@ -137,6 +138,12 @@ class OneTBBConan(ConanFile):
             deps.generate()
 
     def build(self):
+        # Remove -Werror and /WX from
+        #   WARNING_AS_ERROR_KEY = -Werror
+        for compiler in ["cl", "clang", "gcc", "icc", "icl"]:
+            for inc_file in self.source_path.joinpath("build").glob(f"*.{compiler}.inc"):
+                if inc_file.stem not in ["ios.clang", "OpenBSD.clang", "FreeBSD.clang"]:
+                    replace_in_file(self, inc_file, "WARNING_AS_ERROR_KEY = ", "WARNING_AS_ERROR_KEY = #", strict=False)
         apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
