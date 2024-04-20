@@ -62,7 +62,7 @@ class OpenUSDConan(ConanFile):
 #         /root/.conan2/p/b/openu651f44e18fc45/b/src/pxr/imaging/plugin/hdEmbree/meshSamplers.h:32:10: fatal error: embree3/rtcore.h: No such file or directory
 #    32 | #include <embree3/rtcore.h>
         "build_embree_plugin": False,
-        "enable_materialx_support": False,
+        "enable_materialx_support": True,
         "enable_vulkan_support": False,
         "enable_gl_support": True,
         "build_gpu_support": True,
@@ -170,8 +170,7 @@ class OpenUSDConan(ConanFile):
         if self.options.build_draco_plugin:
             self.requires("draco/1.5.6")
         if self.options.enable_materialx_support:
-           # TODO: add materialx to conan center (https://github.com/AcademySoftwareFoundation/MaterialX)
-            self.requires("materialx/1.38.9")
+            self.requires("materialx/1.38.10", transitive_headers=True)
         if self.options.enable_osl_support:
            # TODO: add osl to conan center (https://github.com/AcademySoftwareFoundation/OpenShadingLanguage)
             self.requires("openshadinglanguage/1.13.8.0")
@@ -193,8 +192,6 @@ class OpenUSDConan(ConanFile):
             raise ConanInvalidConfiguration("animx recipe doesn't yet exists in conan center index")
         if self.options.enable_osl_support:
             raise ConanInvalidConfiguration("openshadinglanguage recipe doesn't yet exists in conan center index")
-        if self.options.enable_materialx_support:
-            raise ConanInvalidConfiguration("materialx recipe doesn't yet exists in conan center index")
         if self.options.build_renderman_plugin:
             raise ConanInvalidConfiguration("renderman recipe doesn't yet exists in conan center index")
         
@@ -258,8 +255,28 @@ class OpenUSDConan(ConanFile):
         tc = CMakeDeps(self)
         tc.generate()
 
+        tc = VirtualBuildEnv(self)
+        tc.generate(scope="build")
+
     def _patch_sources(self):
         rmdir(self, os.path.join(self.source_folder, "cmake", "modules"))
+        if self.options.enable_materialx_support:
+            pxrImagingHdMtlxCMakeListsToUpdate = os.path.join(self.source_folder, "pxr/imaging/hdMtlx/CMakeLists.txt")
+            replace_in_file(self, pxrImagingHdMtlxCMakeListsToUpdate, "MaterialXCore", "materialx::MaterialXCore")
+            replace_in_file(self, pxrImagingHdMtlxCMakeListsToUpdate, "MaterialXFormat", "materialx::MaterialXFormat")
+            pxrImagingHdStCMakeListsToUpdate = os.path.join(self.source_folder, "pxr/imaging/hdSt/CMakeLists.txt")
+            replace_in_file(self, pxrImagingHdStCMakeListsToUpdate, "MaterialXGenShader", "materialx::MaterialXGenShader")
+            replace_in_file(self, pxrImagingHdStCMakeListsToUpdate, "MaterialXRender", "materialx::MaterialXRender")
+            replace_in_file(self, pxrImagingHdStCMakeListsToUpdate, "MaterialXCore", "materialx::MaterialXCore")
+            replace_in_file(self, pxrImagingHdStCMakeListsToUpdate, "MaterialXFormat", "materialx::MaterialXFormat")
+            replace_in_file(self, pxrImagingHdStCMakeListsToUpdate, "MaterialXGenGlsl", "materialx::MaterialXGenGlsl")
+            pxrUsdUsdMtlxCMakeListsToUpdate = os.path.join(self.source_folder, "pxr/usd/usdMtlx/CMakeLists.txt")
+            replace_in_file(self, pxrUsdUsdMtlxCMakeListsToUpdate, "MaterialXCore", "materialx::MaterialXCore")
+            replace_in_file(self, pxrUsdUsdMtlxCMakeListsToUpdate, "MaterialXFormat", "materialx::MaterialXFormat")
+            pxrUsdImagingBinUseBakeMtlxCMakeListsToUpdate = os.path.join(self.source_folder, "pxr/usdImaging/bin/usdBakeMtlx/CMakeLists.txt")
+            replace_in_file(self, os.path.join(self.source_folder, pxrUsdImagingBinUseBakeMtlxCMakeListsToUpdate), "MaterialXCore", "materialx::MaterialXCore")
+            replace_in_file(self, os.path.join(self.source_folder, pxrUsdImagingBinUseBakeMtlxCMakeListsToUpdate), "MaterialXFormat", "materialx::MaterialXFormat")
+            replace_in_file(self, os.path.join(self.source_folder, pxrUsdImagingBinUseBakeMtlxCMakeListsToUpdate), "MaterialXRenderGlsl", "materialx::MaterialXRenderGlsl")
         apply_conandata_patches(self)
 
     def build(self):
@@ -347,7 +364,7 @@ class OpenUSDConan(ConanFile):
 
             if self.options.enable_materialx_support:
                 self.cpp_info.components["usd_hdMtlx"].libs = ["usd_hdMtlx"]
-                self.cpp_info.components["usd_hdMtlx"].requires = ["usd_gf", "usd_hd", "usd_sdf", "usd_sdr", "usd_tf", "usd_trace", "usd_usdMtlx", "usd_vt", "usd_vt", "usd_MaterialXCore", "usd_MaterialXFormat"]
+                self.cpp_info.components["usd_hdMtlx"].requires = ["usd_gf", "usd_hd", "usd_sdf", "usd_sdr", "usd_tf", "usd_trace", "usd_usdMtlx", "usd_vt", "usd_vt", "materialx::MaterialXCore", "materialx::MaterialXFormat"]
 
             self.cpp_info.components["usd_pxOsd"].libs = ["usd_pxOsd"]
             self.cpp_info.components["usd_pxOsd"].requires = ["usd_tf", "usd_gf", "usd_vt", "opensubdiv::opensubdiv"]
@@ -356,7 +373,7 @@ class OpenUSDConan(ConanFile):
                 self.cpp_info.components["usd_hdSt"].libs = ["usd_hdSt"]
                 self.cpp_info.components["usd_hdSt"].requires = ["usd_hio", "usd_garch", "usd_glf", "usd_hd", "usd_hdsi", "usd_hgiGL", "usd_hgiInterop", "usd_sdr", "usd_tf", "usd_trace", "opensubdiv::opensubdiv"]
                 if self.options.enable_materialx_support:
-                    self.cpp_info.components["usd_hdSt"].requires.extend(["usd_MaterialXGenShader", "usd_MaterialXRender", "usd_MaterialXCore", "usd_MaterialXFormat", "usd_MaterialXGenGlsl", "usd_hdMtlx"])
+                    self.cpp_info.components["usd_hdSt"].requires.extend(["materialx::MaterialXGenShader", "materialx::MaterialXRender", "materialx::MaterialXCore", "materialx::MaterialXFormat", "materialx::MaterialXGenGlsl", "usd_hdMtlx"])
                 if self.options.enable_ptex_support:
                     self.cpp_info.components["usd_hdSt"].requires.append("ptex::ptex")
 
@@ -468,7 +485,7 @@ class OpenUSDConan(ConanFile):
 
         if self.options.enable_materialx_support:
             self.cpp_info.components["usd_usdMtlx"].libs = ["usd_usdMtlx"]
-            self.cpp_info.components["usd_usdMtlx"].requires = ["usd_arch", "usd_gf", "usd_ndr", "usd_sdf", "usd_sdr", "usd_tf", "usd_vt", "usd_usd", "usd_usdGeom", "usd_usdShade", "usd_usdUI", "usd_usdUtils", "MaterialXCore", "MaterialXFormat"]
+            self.cpp_info.components["usd_usdMtlx"].requires = ["usd_arch", "usd_gf", "usd_ndr", "usd_sdf", "usd_sdr", "usd_tf", "usd_vt", "usd_usd", "usd_usdGeom", "usd_usdShade", "usd_usdUI", "usd_usdUtils", "materialx::MaterialXCore", "materialx::MaterialXFormat"]
 
         self.cpp_info.components["usd_usdPhysics"].libs = ["usd_usdPhysics"]
         self.cpp_info.components["usd_usdPhysics"].requires = ["usd_tf", "usd_plug", "usd_vt", "usd_sdf", "usd_trace", "usd_usd", "usd_usdGeom", "usd_usdShade", "usd_work", "onetbb::libtbb"]

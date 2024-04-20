@@ -1,0 +1,15 @@
+sources:
+  "1.13.8.0":
+    url: "https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/refs/tags/v1.13.8.0.tar.gz"
+    sha256: "72ab8d6be5ae7a34a88a265573a847c5fad6971dbbd9edb1612da43c7cfb15ec"
+patches:
+  # Newer versions at the top
+  "1.1.0":
+    - patch_file: "patches/0001-fix-cmake.patch"
+      patch_description: "correct the order of cmake min and project"
+      patch_type: "backport"
+      patch_source: "https://github.com/owner/package/pulls/42"
+    - patch_file: "patches/0002-fix-linux.patch"
+      patch_description: "add missing header to support linux"
+      patch_type: "portability"
+      patch_source: "https://github.com/owner/package/issues/0"
