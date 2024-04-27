@@ -122,6 +122,9 @@ class CCTagConan(ConanFile):
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
                               "SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)",
                               "")
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                              "find_package(TBB 2021.5.0 CONFIG REQUIRED)",
+                              "find_package(TBB CONFIG REQUIRED)")
         # Link to OpenCV targets
         replace_in_file(self, os.path.join(self.source_folder, "src", "CMakeLists.txt"),
                               "${OpenCV_LIBS}",
