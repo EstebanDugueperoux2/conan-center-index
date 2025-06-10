@@ -91,6 +91,8 @@ class IfcopenshellConan(ConanFile):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
         apply_conandata_patches(self)
         replace_in_file(self, "cmake/CMakeLists.txt", "set(CMAKE_CXX_STANDARD 17)", "")
+        replace_in_file(self, "cmake/CMakeLists.txt", "add_debug_variants(", "#add_debug_variants(")
+
 
     def generate(self):
         def includedir(dep):
@@ -124,6 +126,11 @@ class IfcopenshellConan(ConanFile):
         if self.options.get_safe("with_hdf5"):
             tc.variables["HDF5_INCLUDE_DIR"] = includedir("hdf5")
             tc.variables["HDF5_LIBRARY_DIR"] = libdir("hdf5")
+
+        if self.settings.compiler == "msvc":
+            # Append to compiler flags during this package build
+            existing_flags = tc.variables.get("CMAKE_CXX_FLAGS", "")
+            tc.variables["CMAKE_CXX_FLAGS"] = existing_flags + " /permissive- /EHsc"
         tc.generate()
 
         tc.generate()
