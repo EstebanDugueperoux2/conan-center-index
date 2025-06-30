@@ -1,0 +1,8 @@
+sources:
+  "0.1.0.cci.20250628":
+    url: "https://github.com/IfcOpenShell/svgfill/archive/37448e9.zip"
+    sha256: "fc0dce3da6f574d076ae6540d875a0fa132a3dedb3f492bb0fa3c0e17e77611f"
+patches:
+  "0.1.0.cci.20250628":
+    - patch_file: "patches/0001-Use-conan-to-manage-dependencies.patch"
+    
