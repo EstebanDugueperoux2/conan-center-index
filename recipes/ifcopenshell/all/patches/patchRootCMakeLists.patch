@@ -25,7 +25,7 @@
  option(USERSPACE_PYTHON_PREFIX "Installs IfcPython for the current user only instead of system-wide." OFF)
  option(ADD_COMMIT_SHA "Add commit sha and branch in version number, warning results in many rebuilds, requires git" OFF)
 -option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
- 
+-
 -if (VERSION_OVERRIDE)
 -    file(READ "../VERSION" "RELEASE_VERSION_")
 -    string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
@@ -33,7 +33,7 @@
 -else()
 -    set(RELEASE_VERSION "0.8.0")
 -endif()
--
+ 
 -project(IfcOpenShell VERSION ${RELEASE_VERSION})
 +message(STATUS "Build options:")
 +get_cmake_property(_variableNames VARIABLES)
@@ -169,13 +169,13 @@
 -        # @todo investigate the exact conditions when this is necessary
 -        TKBin
 -    )
- 
+-
 -    if(OCC_VERSION_STRING VERSION_LESS 7.8.0)
 -        list(APPEND OPENCASCADE_LIBRARY_NAMES  TKIGES TKSTEPBase TKSTEPAttr TKSTEP209 TKSTEP)
 -    else(OCC_VERSION_STRING VERSION_LESS 7.8.0)
 -        list(APPEND OPENCASCADE_LIBRARY_NAMES TKDESTEP TKDEIGES)
 -    endif(OCC_VERSION_STRING VERSION_LESS 7.8.0)
--
+ 
 -    if("${OCC_LIBRARY_DIR}" STREQUAL "")
 -        find_library(OCC_LIBRARY TKernel
 -            PATHS
@@ -209,11 +209,11 @@
 -        set(OCC_LIBRARY_DIR ${OCC_LIBRARY_DIR} CACHE FILEPATH "Open CASCADE library files")
 -        message(STATUS "Looking for Open CASCADE library files in: ${OCC_LIBRARY_DIR}")
 -    endif()
- 
+-
 -    clear_wasm_sysroot()
 -    find_library(libTKernel NAMES TKernel TKerneld PATHS ${OCC_LIBRARY_DIR} NO_DEFAULT_PATH)
 -    restore_wasm_sysroot()
--
+ 
 -    if(libTKernel)
 -        message(STATUS "Required Open Cascade Library files found")
 -    else()
@@ -384,16 +384,41 @@
          target_link_libraries(geometry_serializer ${geometry_serializer_libraries})
          set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} geometry_serializer ${geometry_serializer_libraries})
      endif()
-@@ -978,7 +982,7 @@ if(BUILD_IFCGEOM)
-             # needed?
-             # if(NOT WASM_BUILD)
-             # endif()
+@@ -956,33 +960,6 @@ if(BUILD_IFCGEOM)
+         list(APPEND CGAL_LIBRARIES "${libGMP}")
+     endif()
+ 
+-    foreach(kernel ${GEOMETRY_KERNELS})
+-        string(TOUPPER ${kernel} KERNEL_UPPER)
+-        file(GLOB IFCGEOM_H_FILES ../src/ifcgeom/kernels/${kernel}/*.h)
+-        file(GLOB IFCGEOM_CPP_FILES ../src/ifcgeom/kernels/${kernel}/*.cpp)
+-        set(IFCGEOM_FILES ${IFCGEOM_CPP_FILES} ${IFCGEOM_H_FILES})
+-        
+-        add_library(geometry_kernel_${kernel} ${IFCGEOM_FILES})
+-        set_property(TARGET geometry_kernel_${kernel} APPEND PROPERTY COMPILE_FLAGS "-DIFC_GEOM_EXPORTS")
+-        # needed?
+-        # if(NOT WASM_BUILD)
+-        # endif()
+-        target_link_libraries(geometry_kernel_${kernel} ${${KERNEL_UPPER}_LIBRARIES})
+-        list(APPEND kernel_libraries geometry_kernel_${kernel})
+-        
+-        if(${kernel} STREQUAL "cgal")
+-            set_property(TARGET geometry_kernel_${kernel} APPEND_STRING PROPERTY COMPILE_FLAGS " -DCGAL_HAS_THREADS")
+-
+-            add_library(geometry_kernel_${kernel}_simple ${IFCGEOM_FILES})
+-            set_target_properties(geometry_kernel_${kernel}_simple PROPERTIES COMPILE_FLAGS "-DIFC_GEOM_EXPORTS -DIFOPSH_SIMPLE_KERNEL -DCGAL_HAS_THREADS")
+-            # needed?
+-            # if(NOT WASM_BUILD)
+-            # endif()
 -            target_link_libraries(geometry_kernel_${kernel}_simple ${${KERNEL_UPPER}_LIBRARIES})
-+            target_link_libraries(geometry_kernel_${kernel}_simple ${${KERNEL_UPPER}_LIBRARIES} "Eigen3::Eigen")
-             list(APPEND kernel_libraries geometry_kernel_${kernel}_simple)
-         endif()
-     endforeach()
-@@ -990,7 +994,7 @@ if(BUILD_IFCGEOM)
+-            list(APPEND kernel_libraries geometry_kernel_${kernel}_simple)
+-        endif()
+-    endforeach()
+-
+     # IfcGeom
+     foreach(schema ${SCHEMA_VERSIONS})
+         file(GLOB IFCGEOM_I_FILES ../src/ifcgeom/mapping/*.i)
+@@ -990,7 +967,7 @@ if(BUILD_IFCGEOM)
          file(GLOB IFCGEOM_CPP_FILES ../src/ifcgeom/mapping/*.cpp)
          set(IFCGEOM_FILES ${IFCGEOM_CPP_FILES} ${IFCGEOM_H_FILES} ${IFCGEOM_I_FILES})
          
@@ -402,7 +427,7 @@
          set_target_properties(geometry_mapping_ifc${schema} PROPERTIES COMPILE_FLAGS "-DIFC_GEOM_EXPORTS -DIfcSchema=Ifc${schema}")
          target_link_libraries(geometry_mapping_ifc${schema} IfcParse)
          list(APPEND mapping_libraries geometry_mapping_ifc${schema})
-@@ -1009,9 +1013,9 @@ if(BUILD_IFCGEOM)
+@@ -1009,11 +986,38 @@ if(BUILD_IFCGEOM)
      endif()
  
      if(WASM_BUILD)
@@ -413,7 +438,36 @@
 +        target_link_libraries(IfcGeom IfcParse ${kernel_libraries} ${mapping_libraries} ${CMAKE_THREAD_LIBS_INIT} "Eigen3::Eigen")
      endif()
  
++    foreach(kernel ${GEOMETRY_KERNELS})
++        string(TOUPPER ${kernel} KERNEL_UPPER)
++        file(GLOB IFCGEOM_H_FILES ../src/ifcgeom/kernels/${kernel}/*.h)
++        file(GLOB IFCGEOM_CPP_FILES ../src/ifcgeom/kernels/${kernel}/*.cpp)
++        set(IFCGEOM_FILES ${IFCGEOM_CPP_FILES} ${IFCGEOM_H_FILES})
++        
++        add_library(geometry_kernel_${kernel} ${IFCGEOM_FILES})
++        set_property(TARGET geometry_kernel_${kernel} APPEND PROPERTY COMPILE_FLAGS "-DIFC_GEOM_EXPORTS")
++        # needed?
++        # if(NOT WASM_BUILD)
++        # endif()
++        target_link_libraries(geometry_kernel_${kernel} IfcGeom ${${KERNEL_UPPER}_LIBRARIES})
++        list(APPEND kernel_libraries geometry_kernel_${kernel})
++        
++        if(${kernel} STREQUAL "cgal")
++            set_property(TARGET geometry_kernel_${kernel} APPEND_STRING PROPERTY COMPILE_FLAGS " -DCGAL_HAS_THREADS")
++
++            add_library(geometry_kernel_${kernel}_simple ${IFCGEOM_FILES})
++            set_target_properties(geometry_kernel_${kernel}_simple PROPERTIES COMPILE_FLAGS "-DIFC_GEOM_EXPORTS -DIFOPSH_SIMPLE_KERNEL -DCGAL_HAS_THREADS")
++            # needed?
++            # if(NOT WASM_BUILD)
++            # endif()
++            target_link_libraries(geometry_kernel_${kernel}_simple ${${KERNEL_UPPER}_LIBRARIES} "Eigen3::Eigen")
++            list(APPEND kernel_libraries geometry_kernel_${kernel}_simple)
++        endif()
++    endforeach()
++
  endif(BUILD_IFCGEOM)
+ 
+ if(BUILD_CONVERT OR BUILD_IFCPYTHON)
 @@ -1026,7 +1030,7 @@ if(BUILD_CONVERT OR BUILD_IFCPYTHON)
      set(SERIALIZERS_S_FILES ${SERIALIZERS_S_H_FILES} ${SERIALIZERS_S_CPP_FILES})
  
