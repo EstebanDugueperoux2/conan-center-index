@@ -18,19 +18,6 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 3.21)
-
-option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
-
-if (VERSION_OVERRIDE)
-    file(READ "VERSION" "RELEASE_VERSION_")
-    string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
-    message(STATUS "Detected version '${RELEASE_VERSION}'")
-else()
-    set(RELEASE_VERSION "0.8.0")
-endif()
-
-project(IfcOpenShell VERSION ${RELEASE_VERSION})
-
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # not necessary, but encouraged
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -52,9 +39,6 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
-
-# Include utility macros and functions
-# include(utilities.cmake)
 
 # use extra version to make pre-release using eg semver
 if(NOT DEFINED EXTRA_VERSION)
@@ -93,6 +77,20 @@ option(WITH_RELATIONSHIP_VALIDATION "Build IfcConvert with option to validate ge
 
 option(USERSPACE_PYTHON_PREFIX "Installs IfcPython for the current user only instead of system-wide." OFF)
 option(ADD_COMMIT_SHA "Add commit sha and branch in version number, warning results in many rebuilds, requires git" OFF)
+
+option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
+
+if (VERSION_OVERRIDE)
+    file(READ "VERSION" "RELEASE_VERSION_")
+    string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
+    message(STATUS "Detected version '${RELEASE_VERSION}'")
+else()
+    set(RELEASE_VERSION "0.8.0")
+endif()
+
+project(IfcOpenShell VERSION ${RELEASE_VERSION})
+
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 message(STATUS "Build options:")
 get_cmake_property(_variableNames VARIABLES)
@@ -160,14 +158,6 @@ if(BUILD_SHARED_LIBS)
     set(IFCOPENSHELL_LIBRARY_DIR "${LIBDIR}")
 endif()
 
-# Get a list of all OPTION flags from the CMakeLists.txt
-# get_all_option_flags(option_flags)
-
-# Loop through the list of OPTION flags and convert the corresponding environment variables
-foreach(option_flag IN LISTS option_flags)
-    convert_env_var_to_bool("${option_flag}")
-endforeach()
-
 set(CMAKE_FIND_ROOT_PATH_BACKUP "${CMAKE_FIND_ROOT_PATH}")
 
 macro(clear_wasm_sysroot)
@@ -189,7 +179,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 endmacro()
 
 if(WITH_CGAL)
-    message(STATUS "Building with CGAL support")
     add_definitions(-DIFOPSH_WITH_CGAL)
     set(SWIG_DEFINES ${SWIG_DEFINES} -DIFOPSH_WITH_CGAL)
 
@@ -197,9 +186,10 @@ if(WITH_CGAL)
 		add_definitions(-DIFOPSH_WITH_CITYJSON)
     endif()
 
+    # set(CMAKE_FIND_DEBUG_MODE TRUE)
     find_package(gmp REQUIRED CONFIG)
+    # set(CMAKE_FIND_DEBUG_MODE FALSE)
     list(APPEND CGAL_LIBRARIES "gmp::gmpxx")
-    #  gmp::libgmp mpfr::mpfr 
     find_package(mpfr REQUIRED CONFIG)
     list(APPEND CGAL_LIBRARIES "mpfr::mpfr")
 
@@ -213,6 +203,7 @@ if(WITH_OPENCASCADE)
 endif()
 
 if(GLTF_SUPPORT OR CITYJSON_SUPPORT)
+    UNIFY_ENVVARS_AND_CACHE(JSON_INCLUDE_DIR)
     clear_wasm_sysroot()
     find_path(json_header_path "nlohmann/json.hpp" HINTS ${JSON_INCLUDE_DIR})
     restore_wasm_sysroot()
@@ -231,6 +222,8 @@ endif()
 # Add USD support to serializers 
 if(USD_SUPPORT)
     find_package(openusd REQUIRED CONFIG)
+    UNIFY_ENVVARS_AND_CACHE(USD_INCLUDE_DIR)
+    UNIFY_ENVVARS_AND_CACHE(USD_LIBRARY_DIR)
 
     if("${USD_INCLUDE_DIR}" STREQUAL "")
         find_path(USD_INCLUDE_DIR pxr.h
@@ -840,6 +833,8 @@ if(BUILD_IFCGEOM)
 	    set(IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES} IfcGeom ${IFCGEOM_SCHEMA_LIBRARIES} IfcGeom ${IFCGEOM_SCHEMA_LIBRARIES})	
 	endif()
 endif()
+
+set_property(GLOBAL PROPERTY IFCOPENSHELL_LIBRARIES ${IFCOPENSHELL_LIBRARIES})
 
 # IfcParse
 add_subdirectory(src/ifcparse)

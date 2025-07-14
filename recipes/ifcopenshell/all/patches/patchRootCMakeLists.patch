@@ -1,30 +1,11 @@
+
 diff --git a/cmake/CMakeLists.txt b/CMakeLists.txt
 similarity index 57%
 rename from cmake/CMakeLists.txt
 rename to CMakeLists.txt
 --- a/cmake/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -18,6 +18,19 @@
- ################################################################################
- 
- cmake_minimum_required(VERSION 3.21)
-+
-+option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
-+
-+if (VERSION_OVERRIDE)
-+    file(READ "VERSION" "RELEASE_VERSION_")
-+    string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
-+    message(STATUS "Detected version '${RELEASE_VERSION}'")
-+else()
-+    set(RELEASE_VERSION "0.8.0")
-+endif()
-+
-+project(IfcOpenShell VERSION ${RELEASE_VERSION})
-+
- set(CMAKE_CXX_STANDARD_REQUIRED ON) # not necessary, but encouraged
- set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
- 
-@@ -48,7 +61,6 @@ if(NOT DEFINED EXTRA_VERSION)
+@@ -48,7 +48,6 @@ if(NOT DEFINED EXTRA_VERSION)
      set(EXTRA_VERSION "-alpha.3")
  endif()
  
@@ -32,22 +13,23 @@ rename to CMakeLists.txt
  option(WASM_BUILD "Build a WebAssembly binary." OFF)
  
  option(ENABLE_BUILD_OPTIMIZATIONS "Enable certain compiler and linker optimizations on RelWithDebInfo and Release builds." OFF)
-@@ -81,29 +93,14 @@ option(WITH_RELATIONSHIP_VALIDATION "Build IfcConvert with option to validate ge
+@@ -81,10 +80,11 @@ option(WITH_RELATIONSHIP_VALIDATION "Build IfcConvert with option to validate ge
  
  option(USERSPACE_PYTHON_PREFIX "Installs IfcPython for the current user only instead of system-wide." OFF)
  option(ADD_COMMIT_SHA "Add commit sha and branch in version number, warning results in many rebuilds, requires git" OFF)
--option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
++
+ option(VERSION_OVERRIDE "Override the version defined in IfcParse.h with the file VERSION in the repository root" OFF)
  
--if (VERSION_OVERRIDE)
+ if (VERSION_OVERRIDE)
 -    file(READ "../VERSION" "RELEASE_VERSION_")
--    string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
--    message(STATUS "Detected version '${RELEASE_VERSION}'")
--else()
--    set(RELEASE_VERSION "0.8.0")
--endif()
--
--project(IfcOpenShell VERSION ${RELEASE_VERSION})
--
++    file(READ "VERSION" "RELEASE_VERSION_")
+     string(STRIP "${RELEASE_VERSION_}" RELEASE_VERSION)
+     message(STATUS "Detected version '${RELEASE_VERSION}'")
+ else()
+@@ -93,17 +93,15 @@ endif()
+ 
+ project(IfcOpenShell VERSION ${RELEASE_VERSION})
+ 
 -if(MINIMAL_BUILD)
 -    message(STATUS "Setting options for minimal build")
 -    set(BUILD_GEOMSERVER OFF)
@@ -59,6 +41,8 @@ rename to CMakeLists.txt
 -    set(IFCXML_SUPPORT OFF)
 -    set(USD_SUPPORT OFF)
 -endif()
++list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
++
 +message(STATUS "Build options:")
 +get_cmake_property(_variableNames VARIABLES)
 +foreach(_variableName ${_variableNames})
@@ -69,10 +53,16 @@ rename to CMakeLists.txt
  
  if((BUILD_CONVERT OR BUILD_GEOMSERVER OR BUILD_IFCPYTHON) AND(NOT BUILD_IFCGEOM))
      message(STATUS "'IfcGeom' is required with current outputs")
-@@ -169,23 +166,21 @@ UNIFY_ENVVARS_AND_CACHE(BOOST_ROOT)
- UNIFY_ENVVARS_AND_CACHE(BOOST_LIBRARYDIR)
- UNIFY_ENVVARS_AND_CACHE(EIGEN_DIR)
+@@ -163,30 +161,6 @@ if(BUILD_SHARED_LIBS)
+     set(IFCOPENSHELL_LIBRARY_DIR "${LIBDIR}")
+ endif()
  
+-UNIFY_ENVVARS_AND_CACHE(OCC_INCLUDE_DIR)
+-UNIFY_ENVVARS_AND_CACHE(OCC_LIBRARY_DIR)
+-UNIFY_ENVVARS_AND_CACHE(BOOST_ROOT)
+-UNIFY_ENVVARS_AND_CACHE(BOOST_LIBRARYDIR)
+-UNIFY_ENVVARS_AND_CACHE(EIGEN_DIR)
+-
 -if(NOT MINIMAL_BUILD)
 -    UNIFY_ENVVARS_AND_CACHE(OPENCOLLADA_INCLUDE_DIR)
 -    UNIFY_ENVVARS_AND_CACHE(OPENCOLLADA_LIBRARY_DIR)
@@ -90,38 +80,25 @@ rename to CMakeLists.txt
 -    UNIFY_ENVVARS_AND_CACHE(MPFR_INCLUDE_DIR)
 -    UNIFY_ENVVARS_AND_CACHE(MPFR_LIBRARY_DIR)
 -endif()
-+UNIFY_ENVVARS_AND_CACHE(OPENCOLLADA_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(OPENCOLLADA_LIBRARY_DIR)
-+UNIFY_ENVVARS_AND_CACHE(LIBXML2_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(LIBXML2_LIBRARIES)
-+UNIFY_ENVVARS_AND_CACHE(PCRE_LIBRARY_DIR)
-+UNIFY_ENVVARS_AND_CACHE(PYTHON_EXECUTABLE)
-+UNIFY_ENVVARS_AND_CACHE(HDF5_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(HDF5_LIBRARY_DIR)
-+UNIFY_ENVVARS_AND_CACHE(HDF5_LIBRARIES)
-+UNIFY_ENVVARS_AND_CACHE(CGAL_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(CGAL_LIBRARY_DIR)
-+UNIFY_ENVVARS_AND_CACHE(GMP_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(GMP_LIBRARY_DIR)
-+UNIFY_ENVVARS_AND_CACHE(MPFR_INCLUDE_DIR)
-+UNIFY_ENVVARS_AND_CACHE(MPFR_LIBRARY_DIR)
- 
+-
  # Get a list of all OPTION flags from the CMakeLists.txt
  get_all_option_flags(option_flags)
-@@ -223,6 +218,12 @@ if(WITH_CGAL)
+ 
+@@ -223,6 +197,13 @@ if(WITH_CGAL)
  		add_definitions(-DIFOPSH_WITH_CITYJSON)
      endif()
  
++    # set(CMAKE_FIND_DEBUG_MODE TRUE)
 +    find_package(gmp REQUIRED CONFIG)
++    # set(CMAKE_FIND_DEBUG_MODE FALSE)
 +    list(APPEND CGAL_LIBRARIES "gmp::gmpxx")
-+    #  gmp::libgmp mpfr::mpfr 
 +    find_package(mpfr REQUIRED CONFIG)
 +    list(APPEND CGAL_LIBRARIES "mpfr::mpfr")
 +
      list(APPEND GEOMETRY_KERNELS cgal)
  endif()
  
-@@ -251,6 +252,7 @@ endif()
+@@ -251,6 +232,7 @@ endif()
  
  # Add USD support to serializers 
  if(USD_SUPPORT)
@@ -129,7 +106,7 @@ rename to CMakeLists.txt
      UNIFY_ENVVARS_AND_CACHE(USD_INCLUDE_DIR)
      UNIFY_ENVVARS_AND_CACHE(USD_LIBRARY_DIR)
  
-@@ -349,152 +351,138 @@ restore_wasm_sysroot()
+@@ -349,152 +331,138 @@ restore_wasm_sysroot()
  message(STATUS "Boost include files found in ${Boost_INCLUDE_DIRS}")
  message(STATUS "Boost libraries found in ${Boost_LIBRARY_DIRS}")
  
@@ -291,17 +268,17 @@ rename to CMakeLists.txt
 -    clear_wasm_sysroot()
 -    find_library(libTKernel NAMES TKernel TKerneld PATHS ${OCC_LIBRARY_DIR} NO_DEFAULT_PATH)
 -    restore_wasm_sysroot()
--
--    if(libTKernel)
--        message(STATUS "Required Open Cascade Library files found")
--    else()
--        message(FATAL_ERROR "Unable to find Open Cascade library files, aborting")
--    endif()
 +        if(NOT OpenCASCADE_FOUND)
 +            clear_wasm_sysroot()
 +            find_library(libTKernel NAMES TKernel TKerneld PATHS ${OCC_LIBRARY_DIR} NO_DEFAULT_PATH)
 +            restore_wasm_sysroot()
  
+-    if(libTKernel)
+-        message(STATUS "Required Open Cascade Library files found")
+-    else()
+-        message(FATAL_ERROR "Unable to find Open Cascade library files, aborting")
+-    endif()
+-
 -    # Use the found libTKernel as a template for all other OCC libraries
 -    # TODO Extract this into macro/function
 -    foreach(lib ${OPENCASCADE_LIBRARY_NAMES})
@@ -393,7 +370,7 @@ rename to CMakeLists.txt
      endif(WITH_OPENCASCADE)
  endif(BUILD_IFCGEOM)
  
-@@ -572,10 +560,6 @@ if(COLLADA_SUPPORT)
+@@ -572,10 +540,6 @@ if(COLLADA_SUPPORT)
              message(FATAL_ERROR "COLLADA_SUPPORT enabled, but unable to find PCRE. "
                  "Disable COLLADA_SUPPORT or fix PCRE_LIBRARY_DIR path to proceed.")
          endif()
@@ -404,7 +381,7 @@ rename to CMakeLists.txt
      else()
          message(FATAL_ERROR "COLLADA_SUPPORT enabled, but unable to find OpenCOLLADA headers. "
              "Disable COLLADA_SUPPORT or fix OpenCOLLADA paths to proceed.")
-@@ -583,6 +567,7 @@ if(COLLADA_SUPPORT)
+@@ -583,6 +547,7 @@ if(COLLADA_SUPPORT)
  endif(COLLADA_SUPPORT)
  
  if(HDF5_SUPPORT)
@@ -412,7 +389,7 @@ rename to CMakeLists.txt
      if("${HDF5_INCLUDE_DIR}" STREQUAL "")
          message(STATUS "No HDF5 include directory specified")
      else()
-@@ -612,13 +597,17 @@ if(HDF5_SUPPORT)
+@@ -612,13 +577,17 @@ if(HDF5_SUPPORT)
                  set(debug_postfix "_debug")
              endif()
  
@@ -437,7 +414,7 @@ rename to CMakeLists.txt
  
          else()
              message(STATUS "Packaging hdf5 and zlib for conda distribution")
-@@ -876,265 +865,25 @@ if(BUILD_IFCGEOM)
+@@ -876,265 +845,25 @@ if(BUILD_IFCGEOM)
  	endif()
  endif()
  
@@ -708,7 +685,7 @@ rename to CMakeLists.txt
  endif(BUILD_GEOMSERVER)
  
  if(ADD_COMMIT_SHA)
-@@ -1189,138 +938,23 @@ if(MSVC)
+@@ -1189,138 +918,23 @@ if(MSVC)
      set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /FORCE:MULTIPLE")
  endif()
  
@@ -741,9 +718,8 @@ rename to CMakeLists.txt
  
  if(BUILD_QTVIEWER)
 -    add_subdirectory(../src/qtviewer qtviewer)
-+    add_subdirectory(src/qtviewer qtviewer)
- endif()
- 
+-endif()
+-
 -# CMake installation targets
 -install(FILES ${IFCPARSE_H_FILES}
 -	DESTINATION ${INCLUDEDIR}/ifcparse
@@ -811,8 +787,9 @@ rename to CMakeLists.txt
 -
 -    add_custom_target(uninstall
 -        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
--endif()
--
++    add_subdirectory(src/qtviewer qtviewer)
+ endif()
+ 
 -# Packaging
 -list(APPEND CPACK_SOURCE_IGNORE_FILES
 -    "/\\\\.git"
@@ -905,7 +882,7 @@ diff --git a/src/ifcconvert/CMakeLists.txt b/src/ifcconvert/CMakeLists.txt
 new file mode 100644
 --- /dev/null
 +++ b/src/ifcconvert/CMakeLists.txt
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,57 @@
 +if(WITH_CGAL AND CITYJSON_SUPPORT)
 +    add_subdirectory(cityjson)
 +    message(STATUS "Building CityJSON support")
@@ -958,13 +935,6 @@ new file mode 100644
 +    set_property(TARGET IfcConvert APPEND_STRING PROPERTY COMPILE_FLAGS " -DIFOPSH_WITH_CITYJSON")
 +endif()
 +
-+# if((NOT WIN32) AND BUILD_SHARED_LIBS)
-+#     # Only set RPATHs when building shared libraries (i.e. IfcParse and
-+#     # IfcGeom are dynamically linked). Not necessarily a perfect solution
-+#     # but probably a good indication of whether RPATHs are necessary.
-+#     SET_INSTALL_RPATHS(IfcConvert "${IFCOPENSHELL_LIBRARY_DIR};${OCC_LIBRARY_DIR};${Boost_LIBRARY_DIRS};${OPENCOLLADA_LIBRARY_DIR}")
-+# endif()
-+
 +install(TARGETS IfcConvert
 +    ARCHIVE DESTINATION ${LIBDIR}
 +    LIBRARY DESTINATION ${LIBDIR}
@@ -995,11 +965,11 @@ new file mode 100644
 +get_property(mapping_libraries GLOBAL PROPERTY mapping_libraries)
 +message(STATUS "IfcGeom kernel_libraries: ${kernel_libraries}")
 +message(STATUS "IfcGeom mapping_libraries: ${mapping_libraries}")
-+if(WASM_BUILD)
-+    target_link_libraries(IfcGeom ${kernel_libraries} ${mapping_libraries} ${CMAKE_THREAD_LIBS_INIT} "Eigen3::Eigen")
-+else()
++# if(WASM_BUILD)
++#     target_link_libraries(IfcGeom ${kernel_libraries} ${mapping_libraries} ${CMAKE_THREAD_LIBS_INIT} "Eigen3::Eigen")
++# else()
 +    target_link_libraries(IfcGeom IfcParse ${kernel_libraries} ${mapping_libraries} ${CMAKE_THREAD_LIBS_INIT} "Eigen3::Eigen")
-+endif()
++# endif()
 +
 +install(FILES ${IFCGEOM_H_FILES}
 +    DESTINATION ${INCLUDEDIR}/ifcgeom
@@ -1061,7 +1031,7 @@ diff --git a/src/ifcgeom/kernels/CMakeLists.txt b/src/ifcgeom/kernels/CMakeLists
 new file mode 100644
 --- /dev/null
 +++ b/src/ifcgeom/kernels/CMakeLists.txt
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,40 @@
 +foreach(kernel ${GEOMETRY_KERNELS})
 +    string(TOUPPER ${kernel} KERNEL_UPPER)
 +    file(GLOB IFCGEOM_H_FILES ${kernel}/*.h)
@@ -1070,9 +1040,6 @@ new file mode 100644
 +
 +    add_library(geometry_kernel_${kernel} OBJECT ${IFCGEOM_FILES})
 +    set_property(TARGET geometry_kernel_${kernel} APPEND PROPERTY COMPILE_FLAGS "-DIFC_GEOM_EXPORTS")
-+    # needed?
-+    # if(NOT WASM_BUILD)
-+    # endif()
 +    message(STATUS "${KERNEL_UPPER}_LIBRARIES: ${${KERNEL_UPPER}_LIBRARIES}")
 +    target_link_libraries(geometry_kernel_${kernel} ${${KERNEL_UPPER}_LIBRARIES})
 +    list(APPEND kernel_libraries geometry_kernel_${kernel})
@@ -1089,9 +1056,6 @@ new file mode 100644
 +
 +        add_library(geometry_kernel_${kernel}_simple OBJECT ${IFCGEOM_FILES})
 +        set_target_properties(geometry_kernel_${kernel}_simple PROPERTIES COMPILE_FLAGS "-DIFC_GEOM_EXPORTS -DIFOPSH_SIMPLE_KERNEL -DCGAL_HAS_THREADS")
-+        # needed?
-+        # if(NOT WASM_BUILD)
-+        # endif()
 +
 +        message(STATUS "${KERNEL_UPPER}_LIBRARIES: ${${KERNEL_UPPER}_LIBRARIES}")
 +        target_link_libraries(geometry_kernel_${kernel}_simple ${${KERNEL_UPPER}_LIBRARIES} "Eigen3::Eigen")
@@ -1373,11 +1337,11 @@ new file mode 100644
 +foreach(schema ${SCHEMA_VERSIONS})
 +    add_library(Serializers_ifc${schema} STATIC ${SERIALIZERS_S_FILES})
 +    set_target_properties(Serializers_ifc${schema} PROPERTIES COMPILE_FLAGS "-DIFC_GEOM_EXPORTS -DIfcSchema=Ifc${schema}")
-+    if(WASM_BUILD)
-+        target_link_libraries(Serializers_ifc${schema} ${HDF5_LIBRARIES})
-+    else()
++    # if(WASM_BUILD)
++    #     target_link_libraries(Serializers_ifc${schema} ${HDF5_LIBRARIES})
++    # else()
 +        target_link_libraries(Serializers_ifc${schema} IfcGeom ${OPENCASCADE_LIBRARIES} ${HDF5_LIBRARIES})
-+    endif()
++    # endif()
 +
 +    install(TARGETS Serializers_ifc${schema}
 +        ARCHIVE DESTINATION ${LIBDIR}

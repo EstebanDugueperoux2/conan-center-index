@@ -137,9 +137,8 @@ class IfcopenshellConan(ConanFile):
         tc.cache_variables["USD_SUPPORT"] = self.options.build_convert and self.options.build_convert_with_usd
         tc.cache_variables["WITH_PROJ"] = self.options.build_convert and self.options.build_convert_with_proj
 
-        tc.cache_variables["BUILD_GEOMSERVER"] = False
         tc.cache_variables["BUILD_IFCPYTHON"] = False
-        tc.cache_variables["BUILD_EXAMPLES"] = False
+        tc.cache_variables["BUILD_EXAMPLES"] = True
         tc.cache_variables["IFCXML_SUPPORT"] = self.options.ifcxml_support
         tc.cache_variables["USE_MMAP"] = self.options.use_mmap
         tc.cache_variables["SCHEMA_VERSIONS"] = ";".join(self._selected_ifc_schemas)
